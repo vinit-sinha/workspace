@@ -1,0 +1,73 @@
+Test #2
+This test consists of 1 problem, with two parts.
+
+Problem 1.
+In C++, implement a client order tracking module for a single symbol for a simple market that only supports order insertion and replacement (no
+deletion). You are welcome to use any STL or Boost functionality, but please do not use other third-party libraries. Your code should implement
+the following interface to be notified of updates:
+class Listener
+{
+public:
+    // These two callbacks represent client requests.
+    // Indicates the client has sent a new order request to the market. Exactly one
+    // callback will follow:
+    // * 'OnRequestAcknowledged', in which case order 'id' is active in the market; or
+    // * 'OnRequestRejected', in which case the order was never active in the market.
+    virtual void OnInsertOrderRequest(
+    int id,
+    char side, // 'B' for bid, 'O' for offer
+    double price,
+    int quantity) = 0;
+    // Indicates the client has sent a request to change the quantity of an order.
+    // Exactly one callback will follow:
+    // * 'OnRequestAcknowledged', in which case the order quantity was modified and the
+    // order is now tracked by ID 'newId'; or
+    // * 'OnRequestRejected', in which case the order was not modified and remains
+    // tracked by ID 'oldId'.
+    virtual void OnReplaceOrderRequest(
+    int oldId, // The existing order to modify
+    int newId, // The new order ID to use if the modification succeeds
+    int deltaQuantity) = 0; // How much the quantity should be increased/decreased
+    // These three callbacks represent market confirmations.
+    // Indicates the insert or modify request was accepted.
+    virtual void OnRequestAcknowledged(
+    int id) = 0;
+    // Indicates the insert or modify request was rejected.
+    virtual void OnRequestRejected(
+    int id) = 0;
+    // Indicates that the order quantity was reduced (and filled) by 'quantityFilled'.
+    virtual void OnOrderFilled(
+    int id,
+    int quantityFilled) = 0;
+};
+
+Note: You may assume all callbacks are called from the same thread. Please document any assumptions you make regarding the order in which
+callbacks are invoked.
+
+
+Part A.
+Please write a class that implements the Listener interface to track the request rate. Your class should be instantiated with a number of
+requests X and a number of seconds Y, and efficiently support the following operations:
+Have more than X requests (from OnInsertOrderRequest and/or OnReplaceOrderRequest) been received in the last Y seconds?
+How long (in fractions of a seconds) must one wait until a request could be submitted without (1) returning true afterwards? (Return 0.0 if
+the request could be submitted right away.)
+
+Part B.
+Please write a class that implements the Listener interface and efficiently supports the following operations:
+ * Net Filled Quantity (NFQ). Return the sum of all fill quantities where filled bids count positively and filled offers count negatively.
+ * Confirmed Order Value (COV). Given a side, return the total value of all orders on that side of the market, defined as the product of the price and quantity of all orders that have been acknowledged but not fully filled or replaced.
+ * Pending Order Value (POV). Given a side, return the minimum and maximum possible total values of all orders on that side of the
+market, taking into account pending requests that have not yet been acknowledged.
+
+For example, the following table shows what values should be shown after each callback:
+
+Callback NFQ COV POV Bid Offer Bid Offer Min Max Min Max
+OnInsertOrderRequest(1, 'B', 10.0, 10) 0 $0.0 $0.0 $0.0 $100.0 $0.0 $0.0
+OnRequestAcknowledged(1) 0 $100.0 $0.0 $100.0 $100.0 $0.0 $0.0
+OnInsertOrderRequest(2, 'O', 15.0, 25) 0 $100.0 $0.0 $100.0 $100.0 $0.0 $375.0
+OnRequestAcknowledged(2) 0 $100.0 $375.0 $100.0 $100.0 $375.0 $375.0
+OnOrderFilled(1, 5) 5 $50.0 $375.0 $50.0 $50.0 $375.0 $375.0
+OnOrderFilled(1, 5) 10 $0.0 $375.0 $0.0 $0.0 $375.0 $375.0
+OnReplaceOrderRequest(2, 3, 10) 10 $0.0 $375.0 $0.0 $0.0 $375.0 $525.0
+OnOrderFilled(2, 25) -15 $0.0 $0.0 $0.0 $0.0 $0.0 $150.0
+OnRequestRejected(3) -15 $0.0 $0.0 $0.0 $0.0 $0.0 $0.0
