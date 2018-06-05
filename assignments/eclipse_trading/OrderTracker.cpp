@@ -11,10 +11,18 @@ enum class Side : char{
     Offer = 'O'
 };
 
+// OrderInfo is used to hold all parameters associated with an Insert Order Request
 struct OrderInfo {
     Side side;
     double price;
     int quantity;
+
+    OrderInfo() = default;
+    OrderInfo(const OrderInfo&) = default;
+    OrderInfo(OrderInfo&&) = default;
+
+    OrderInfo& operator=(const OrderInfo&) = default;
+    OrderInfo& operator=(OrderInfo&&) = default;
 
     OrderInfo(char s, double p, int q) 
         : side( static_cast<Side>(s) )
@@ -30,6 +38,7 @@ struct OrderInfo {
     
 };
 
+// ReplaceInfo is used to hold all parameters associated with an Insert Order Request
 struct ReplaceInfo {
     int newId;
     int deltaQty;
@@ -38,6 +47,11 @@ struct ReplaceInfo {
 using OrderStore = std::unordered_map<int, OrderInfo>;
 using PendingReplace = std::unordered_map<int, ReplaceInfo>;
 
+
+// A Simple Accumulator class which "Accumulates" Net Filled Quantity.
+//  In order to keep extracting this value efficient, we keep track of 
+//  NFQ known so far. notifyFill does the most of work by re-computing
+//   (and hence accumulating) NFQ.
 struct NetFilledQuantity {
     NetFilledQuantity(const OrderStore& store)
         : orderStore(store)
@@ -46,6 +60,7 @@ struct NetFilledQuantity {
     void notifyAck(int id ) {} //No-Op
     void notifyReject(int id ) {} // No-Op
 
+    // TimeComplexity: O(1)  - Amortized Cost
     void notifyFill(int id, int qtyFilled ) {
         auto iter = orderStore.find( id );
         assert( iter != orderStore.end() );
@@ -61,16 +76,23 @@ struct NetFilledQuantity {
         }
     }
 
-    int value() const { return val; }
+    int value() const { return val; } // TimeComplexity: Theta(1)
 private:
     const OrderStore& orderStore;
     int val= 0;;
 };
 
+// A Simple Accumulator class which "Accumulates" Confirmed Order Value.
+//  In order to keep extracting this value efficient, we keep track of 
+//  COV for bid and offer sides separately. 
+//  notifyAck and notifyFill does the most of work by re-computing
+//   (and hence accumulating) COV.
 struct ConfirmedOrderValue {
     ConfirmedOrderValue(const OrderStore& store)
         : orderStore(store)
     {}
+   
+    // TimeComplexity: O(1)  - Amortized Cost
     void notifyAck(int id) {
         auto iter = orderStore.find( id );
         assert( iter != orderStore.end() );
@@ -85,6 +107,7 @@ struct ConfirmedOrderValue {
         }
     }
 
+    // TimeComplexity: O(1)  - Amortized Cost
     void notifyFill(int id, int qtyFilled ) {
         auto iter = orderStore.find( id );
         assert( iter != orderStore.end() );
@@ -99,18 +122,26 @@ struct ConfirmedOrderValue {
         }
     }
 
-    double bidValue() const { return bid; }
-    double offerValue() const { return offer; }
+    double bidValue() const { return bid; } // TimeComplexity: Theta(1)
+    double offerValue() const { return offer; } // TimeComplexity: Theta(1)
 private:
     const OrderStore& orderStore;
     double bid = 0.0;
     double offer = 0.0;
 };
 
+// A Simple Accumulator class which "Accumulates" Pending Order Value.
+//  In order to keep extracting this value efficient, we keep track of 
+//  POV for bid and offer sides separately. Each of side has two values
+//  one for min and another for max.
+//  notifyInsert, notifyAck and notifyFill does the most of work by re-computing
+//   (and hence accumulating) COV.
 struct PendingOrderValue {
     PendingOrderValue(const OrderStore& store)
         : orderStore(store)
     {}
+
+    // TimeComplexity: Theta(1)
     void notifyInsert(const OrderInfo& order) {
         switch( order.side ) {
             case Side::Bid:
@@ -121,6 +152,8 @@ struct PendingOrderValue {
                 break;
         }
     }
+
+    // TimeComplexity: O(1)  - Amortized Cost
     void notifyAck(int id ) {
         auto iter = orderStore.find( id );
         assert( iter != orderStore.end() );
@@ -134,8 +167,11 @@ struct PendingOrderValue {
                 break;
         }
     }
-    void notifyReject(int id ) {
-    }
+
+    // TimeComplexity: Theta(1)
+    void notifyReject(int id ) {} //No-Op
+
+    // TimeComplexity: O(1)  - Amortized Cost
     void notifyFill(int id, int qtyFilled ) {
         auto iter = orderStore.find( id );
         assert( iter != orderStore.end() );
@@ -152,10 +188,10 @@ struct PendingOrderValue {
         }
     }
 
-    double bidMinValue() const { return bidMin; }
-    double bidMaxValue() const { return bidMax; }
-    double offerMinValue() const { return offerMin; }
-    double offerMaxValue() const { return offerMax; }
+    double bidMinValue() const { return bidMin; } // TimeComplexity: Theta(1)
+    double bidMaxValue() const { return bidMax; } // TimeComplexity: Theta(1)
+    double offerMinValue() const { return offerMin; } // TimeComplexity: Theta(1)
+    double offerMaxValue() const { return offerMax; } // TimeComplexity: Theta(1)
 private:
     const OrderStore& orderStore;
     double bidMin = 0.0;
@@ -164,6 +200,11 @@ private:
     double offerMax = 0.0;
 };
 
+
+// OrderTracker class implemets the Listener interface and provides functions to fetch
+//  Net Filled Quantity
+//  Confirmed Order Value, and
+//  Pending Order Value
 class OrderTracker: public Listener {
 public:
     OrderTracker()
@@ -199,25 +240,37 @@ public:
         int quantityFilled
    );
 
+    // TimeComplexity: Theta(1)
     int netFilledQuantity() const {
         return nfq.value();
     }
-
+    
+    // TimeComplexity: Theta(1)
     double confirmedBidValue() const {
         return cov.bidValue(); 
     }
+
+    // TimeComplexity: Theta(1)
     double confirmedOfferValue() const {
         return cov.offerValue();
     }
+
+    // TimeComplexity: Theta(1)
     double pendingBidMinValue() const {
         return pov.bidMinValue();
     }
+
+    // TimeComplexity: Theta(1)
     double pendingBidMaxValue() const {
         return pov.bidMaxValue();
     }
+
+    // TimeComplexity: Theta(1)
     double pendingOfferMinValue() const {
         return pov.offerMinValue();
     }
+    
+    // TimeComplexity: Theta(1)
     double pendingOfferMaxValue() const {
         return pov.offerMaxValue();
     }
@@ -232,6 +285,7 @@ private:
 
 
 // Pre-Condition: id is unique and has never been seen before
+// TimeComplexity: O(1) - Amortized cost
 void OrderTracker::OnInsertOrderRequest(
     int id,
     char side,
@@ -243,6 +297,7 @@ void OrderTracker::OnInsertOrderRequest(
     pov.notifyInsert( order );
 }
     
+// TimeComplexity: O(1) - Amortized cost
 void OrderTracker::OnReplaceOrderRequest(
     int oldId, // The existing order to modify
     int newId, // The new order ID to use if the modification succeeds
@@ -250,9 +305,13 @@ void OrderTracker::OnReplaceOrderRequest(
 ) {
     pendingReplaces.emplace( oldId, ReplaceInfo{newId, deltaQuantity});
 }
+
+//Simple Utility to merge values of OrderInfo to ReplaceInfo
 OrderInfo mergeOrderInfo(const OrderInfo& order, const ReplaceInfo& replace) {
     return OrderInfo(order.side, order.price, order.quantity + replace.deltaQty );
 }
+
+// TimeComplexity: O(1)- Amortized Cost
 void OrderTracker::OnRequestAcknowledged(
    int id
 ) {
@@ -276,6 +335,7 @@ void OrderTracker::OnRequestAcknowledged(
     pov.notifyAck( id );
 }
 
+// TimeComplexity: O(1)
 void OrderTracker::OnRequestRejected(
     int id
 ) {
@@ -283,6 +343,7 @@ void OrderTracker::OnRequestRejected(
     pov.notifyReject( id );
 }
 
+// TimeComplexity: O(1)
 void OrderTracker::OnOrderFilled(
      int id,
      int quantityFilled
