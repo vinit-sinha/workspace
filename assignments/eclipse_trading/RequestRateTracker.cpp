@@ -1,9 +1,14 @@
 #include <chrono>
+#include <iostream>
 
 #include "Listener.h"
 
 class RequestRateTracker: public Listener {
 private:
+    // An utility class which can check the rate of message arrival
+    //  and inform whenever message arrival rate exceeds the specifed rate.
+    //  throtte limit is specifed by number of messages (throttleSize) and
+    //  interval(throttleInterval) during which that many messages are alllowed
     template<typename Clock>
     struct Throttle {
         using TimePoint  = typename Clock::time_point;
@@ -15,12 +20,21 @@ private:
         ): throttleSize( thSize ),
             throttleInterval( thInterval ),
             startOfCurrentTimeWindow( Clock::now() )
-            , lastSeenOn( Clock::now() )
+            , lastSeenOn( startOfCurrentTimeWindow )
             , count(0)
         {}
 
         void notify() {
            lastSeenOn = Clock::now();
+           count++;
+           if( lastSeenOn > startOfCurrentTimeWindow + throttleInterval )
+                reset();
+        }
+
+        void reset() {
+            startOfCurrentTimeWindow = Clock::now();
+            lastSeenOn = startOfCurrentTimeWindow;
+            count = 0;
         }
 
         // Runtime: Theta(1)
@@ -29,10 +43,10 @@ private:
         }
 
         // Runtime: Theta(1);
-        double throttleOpenTimeWindow(const TimePoint& time) const {
-            double openInterval = (time - lastSeenOn).count();
+        double waitPeriod(const TimePoint& time) const {
+            double waitInterval = (time - lastSeenOn).count();
             
-            return ( openInterval > 0 ? openInterval : 0.0 );
+            return ( isWithinThrottleLimit(time) ?  0.0 : waitInterval );
         }
     private:
        std::size_t throttleSize;
@@ -74,12 +88,12 @@ public:
         int quantityFilled
    );
 
-    bool canReceiveNow() const { 
-        return throttle.isWithinThrottleLimit( std::chrono::system_clock::now() );
+    bool hasThrottleHit() const { 
+        return ! throttle.isWithinThrottleLimit( std::chrono::system_clock::now() );
     }
 
-    double howLongReceiveWindowIsOpen() const {
-       return throttle.throttleOpenTimeWindow( std::chrono::system_clock::now() );
+    double howLongToWait() const {
+        return throttle.waitPeriod( std::chrono::system_clock::now() );
     }
 private:
     Throttle<std::chrono::system_clock> throttle;
@@ -131,7 +145,41 @@ void RequestRateTracker::OnOrderFilled(
     //NoOpe
 }
 
-
+// test program
 int main() {
     RequestRateTracker tracker(2, std::chrono::seconds(1));
+    if( tracker.hasThrottleHit() ) {
+        std::cout <<"Test Case Failed at " <<  __LINE__ << std::endl;
+        return -1;
+    }
+
+    if( tracker.howLongToWait() != 0.0 ) {
+        std::cout <<"Test Case Failed at " <<  __LINE__ << " due to " <<  tracker.howLongToWait() << std::endl;
+        return -1;
+    }
+
+    tracker.OnInsertOrderRequest(1, 'B', 10, 10.0 );
+
+    if( tracker.hasThrottleHit() ) {
+        std::cout <<"Test Case Failed at " <<  __LINE__ << std::endl;
+        return -1;
+    }
+
+    if( tracker.howLongToWait() != 0.0 ) {
+        std::cout <<"Test Case Failed at " <<  __LINE__ << " due to " <<  tracker.howLongToWait() << std::endl;
+        return -1;
+    }
+    tracker.OnInsertOrderRequest(2, 'B', 10, 10.0 );
+    
+    if( ! tracker.hasThrottleHit() ) {
+        std::cout <<"Test Case Failed at " <<  __LINE__ << std::endl;
+        return -1;
+    }
+
+    if( tracker.howLongToWait() == 0.0 ) {
+        std::cout <<"Test Case Failed at " <<  __LINE__ << " due to " <<  tracker.howLongToWait() << std::endl;
+        return -1;
+    }
+
+    std::cout << "Tests Passed!" << std::endl;
 }
