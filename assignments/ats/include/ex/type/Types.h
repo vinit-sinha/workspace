@@ -14,7 +14,7 @@ namespace ex { namespace type {
         , Amend = 'M'
         , Cancel = 'R'
         , Trade = 'X'
-        , Unknown
+        , Unknown = '?'
     };
 
     std::ostream& operator<<(std::ostream& out, Action action);
@@ -23,7 +23,7 @@ namespace ex { namespace type {
     enum class Side : char {
         Buy = 'B'
         , Sell = 'S'
-        , Unknown
+        , Unknown = '?'
     };
 
     std::ostream& operator<<(std::ostream& out, Side side);

@@ -10,7 +10,7 @@ CXXFLAGS = -Wall -std=c++11
 #
 INCLUDES = ./include
 SRCS = src/ex/type/Types.cpp src/ex/msg/NewOrder.cpp src/ex/msg/AmendOrder.cpp src/ex/msg/CancelOrder.cpp src/ex/msg/Trade.cpp src/ex/OrderBook.cpp src/FeedHandler.cpp 
-DEPS= include/ex/type/Types.h include/ex/OrderBook.h
+DEPS= include/ex/type/Types.h include/ex/OrderBook.h include/ex/msg/Decoder.h
 OBJS = $(SRCS:.cpp=.o)
 EXE  = feed_handler
 INCLUDE_DIRS = $(addprefix -I, $(INCLUDES))

@@ -1,6 +1,15 @@
 #include "ex/OrderBook.h"
 #include <algorithm>
 
+template<typename Book>
+void printAll(std::ostream& out, Book& book) 
+{
+    out << "[";
+    for(auto& x: book ) {
+        out << x.orderId << ":" << x.quantity << "@" << x.price << " ";
+    }
+    out << "]" << std::endl;
+}
 void printHeaders(std::ostream& out, std::size_t uptoLevel)
 {
     out << std::setw(10) << std::left << "Product";
@@ -13,29 +22,22 @@ void printHeaders(std::ostream& out, std::size_t uptoLevel)
         out << std::setw(10) << (columnName + std::to_string(i));
     } 
 }
-template<typename Book>
-void printPricePoints(std::ostream& out, Book& book, std::size_t uptoLevel) 
+template<typename OrderInfoSet>
+void printPricePoints(std::ostream& out, OrderInfoSet& infoSet, std::size_t uptoLevel) 
 {
-    for( auto iter = book.begin(); iter != book.end(); ++iter ) {
-        out << std::setw(10) << std::left << iter->first;
-        auto& infoSet = iter->second;
-        std::size_t i = uptoLevel;
-        for( auto infoSetIter = infoSet.begin(); infoSetIter != infoSet.end() && i >= 0; ++infoSetIter ) {
-            out << std::setw(10) << std::left << infoSetIter->price;
-            i--;
+    std::size_t i = std::min( uptoLevel, infoSet.size() );
+    for( auto infoSetIter = infoSet.begin(); infoSetIter != infoSet.end() && i > 0; infoSetIter++ ) {
+        out << std::setw(10) << std::left << infoSetIter->price;
+        i--;
+    }
+
+    if( infoSet.size() < uptoLevel ) {
+        for(std::size_t  blankEntries = uptoLevel - infoSet.size(); blankEntries > 0; blankEntries-- ) {
+            out << std::setw(10) << std::left << "-";
         }
-        out << std::endl;
     }
 }
-template<typename Book>
-void printAll(std::ostream& out, Book& book) 
-{
-    out << "[";
-    for(auto& x: book ) {
-        out << x.orderId << ":" << x.quantity << "@" << x.price << " ";
-    }
-    out << "]" << std::endl;
-}
+
 void ex::OrderBook::print(std::ostream& out, std::size_t level, bool printHeader) 
 {
     if( printHeader ) {
@@ -43,10 +45,12 @@ void ex::OrderBook::print(std::ostream& out, std::size_t level, bool printHeader
         out << std::endl;
     }
 
-    printPricePoints( out, buys, level );
-    printPricePoints( out, sells, level );
-
-    out << std::endl;
+    for(auto& product: products) {
+        out << std::setw(10) << std::left << product;
+        printPricePoints( out, buys[product], level );
+        printPricePoints( out, sells[product], level );
+        out << std::endl;
+    }
 }
 void ex::OrderBook::notify(const ex::msg::NewOrder& obj)
 {
@@ -54,6 +58,8 @@ void ex::OrderBook::notify(const ex::msg::NewOrder& obj)
     ord.orderId = obj.orderId;
     ord.price = obj.price;
     ord.quantity = obj.quantity;
+
+    products.emplace( obj.productId );
     if( obj.side == ex::type::Side::Buy ) {
         buys[obj.productId].emplace( ord );
     } else {
@@ -62,7 +68,6 @@ void ex::OrderBook::notify(const ex::msg::NewOrder& obj)
 
     orderIdToProductIdMap[obj.orderId] = obj.productId;
 }
-
 void ex::OrderBook::notify(const ex::msg::AmendOrder& obj)
 {
     auto productIdIter = orderIdToProductIdMap.find( obj.orderId );
@@ -102,5 +107,5 @@ void ex::OrderBook::notify(const ex::msg::Trade& obj)
         return;
     }
 
-    // execute( buys[productIdIter->second], sells[productIdIter->second], obj);
+    execute( buys[productIdIter->second], sells[productIdIter->second], obj);
 }

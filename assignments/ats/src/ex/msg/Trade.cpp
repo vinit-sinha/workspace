@@ -7,8 +7,6 @@ namespace ex{ namespace msg{
         in.ignore( std::numeric_limits< std::streamsize >::max(), ','); //Ignore Action
         in >> obj.productId;
         in.ignore( std::numeric_limits< std::streamsize >::max(), ','); //Ignore DELIM
-        in >> obj.side;
-        in.ignore( std::numeric_limits< std::streamsize >::max(), ','); //Ignore DELIM
         in >> obj.quantity;
         in.ignore( std::numeric_limits< std::streamsize >::max(), ','); //Ignore DELIM
         in >> obj.price;
@@ -20,7 +18,6 @@ namespace ex{ namespace msg{
     {
         out << obj.action << ","
             << obj.productId << ","
-            << obj.side << ","
             << obj.quantity << ","
             << obj.price;
 

@@ -8,8 +8,6 @@ namespace ex { namespace msg {
         static constexpr  ex::type::Action action = ex::type::Action::Trade;
 
         ex::type::ProductId productId;
-        ex::type::OrderId orderId;
-        ex::type::Side side;
         ex::type::Quantity quantity;
         ex::type::Price price;
 
