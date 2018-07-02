@@ -1,0 +1,8 @@
+g++ -c -I./include -Wall -std=c++11 -O3 -DNDEBUG -o release/src/ex/type/Types.o src/ex/type/Types.cpp
+g++ -c -I./include -Wall -std=c++11 -O3 -DNDEBUG -o release/src/ex/msg/NewOrder.o src/ex/msg/NewOrder.cpp
+g++ -c -I./include -Wall -std=c++11 -O3 -DNDEBUG -o release/src/ex/msg/AmendOrder.o src/ex/msg/AmendOrder.cpp
+g++ -c -I./include -Wall -std=c++11 -O3 -DNDEBUG -o release/src/ex/msg/CancelOrder.o src/ex/msg/CancelOrder.cpp
+g++ -c -I./include -Wall -std=c++11 -O3 -DNDEBUG -o release/src/ex/msg/Trade.o src/ex/msg/Trade.cpp
+g++ -c -I./include -Wall -std=c++11 -O3 -DNDEBUG -o release/src/ex/OrderBook.o src/ex/OrderBook.cpp
+g++ -c -I./include -Wall -std=c++11 -O3 -DNDEBUG -o release/src/FeedHandler.o src/FeedHandler.cpp
+g++ -Wall -std=c++11 -O3 -DNDEBUG -o release/feed_handler release/src/ex/type/Types.o release/src/ex/msg/NewOrder.o release/src/ex/msg/AmendOrder.o release/src/ex/msg/CancelOrder.o release/src/ex/msg/Trade.o release/src/ex/OrderBook.o release/src/FeedHandler.o
