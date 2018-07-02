@@ -74,16 +74,17 @@ namespace ex {
             return err;
         }
 
-       template<typename Iter> 
-       Iter bestPriceMatch(Iter b, Iter e, ex::type::Price price) {
-                // TODO: Implement our own verson of find_if for a reasonable "closet" match (which requires defining "closest" )
-               return std::find_if( b, e, [&price](const ex::state::OrderInfo& info) { return info.price == price; }); 
-       }
+        template<typename Iter> 
+        Iter bestPriceMatch(Iter b, Iter e, ex::type::Price price) {
+            return std::find_if( b, e, [price](const ex::state::OrderInfo& info) { return info.price == price; }); 
+        }
  
        template<typename OrderSet> 
-       void execute(OrderSet& orderSet, const ex::msg::Trade& obj) {
+       bool execute(OrderSet& orderSet, const ex::msg::Trade& obj) {
            ex::type::Quantity remainingQty = obj.quantity;
            auto iter = bestPriceMatch( orderSet.begin(), orderSet.end(), obj.price );
+           if( iter == orderSet.end() ) return false; //TradeWithNoValid Order
+
            while( remainingQty > 0 && iter != orderSet.end() ) {
                if( iter->quantity >= remainingQty ) {
                    ex::state::OrderInfo newInfo = *iter;
@@ -102,12 +103,16 @@ namespace ex {
                }
                iter = bestPriceMatch( ++iter, orderSet.end(), obj.price ); //Try the next bestMatch
            }
+
+            return true;
         }
 
        template<typename BuyOrderSet, typename SellOrderSet> 
-        void execute(BuyOrderSet& buySet, SellOrderSet& sellSet, const ex::msg::Trade& obj) {
-           execute( buySet, obj);
-           execute( sellSet, obj);
+        ex::type::ErrorCode execute(BuyOrderSet& buySet, SellOrderSet& sellSet, const ex::msg::Trade& obj) {
+
+           if( execute( buySet, obj) ) return ex::type::ErrorCode::TradeWithNoValidBuySide;
+           if( execute( sellSet, obj) ) return ex::type::ErrorCode::TradeWithNoValidSellSide;
+
            auto& priceQtyPair = lastTradedPriceAndQuantity[obj.productId];
            if( priceQtyPair.first == obj.price ) { //Update Quantity
                priceQtyPair.second += obj.quantity;
@@ -115,6 +120,8 @@ namespace ex {
                priceQtyPair.first = obj.price;
                priceQtyPair.second = obj.quantity;
            }
+
+            return ex::type::ErrorCode::Ok;
        }
     };
 }

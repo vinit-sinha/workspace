@@ -38,6 +38,8 @@ namespace ex { namespace type {
         , DuplicateProductId
         , InvalidPrice
         , InvalidQuantity
+        , TradeWithNoValidBuySide
+        , TradeWithNoValidSellSide
         , CorruptMessage
         , Unknown = '?'
     };

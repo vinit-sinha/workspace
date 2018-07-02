@@ -55,19 +55,23 @@ namespace ex{ namespace type{
             case ErrorCode::Ok:
                 out <<"No Error"; break;
             case ErrorCode::InvalidOrderId:
-                out <<"Invalid OrderID Error"; break;
+                out <<"InvalidOrderID Error"; break;
             case ErrorCode::InvalidProductId:
-                out <<"Invalid ProductID Error"; break;
+                out <<"InvalidProductID Error"; break;
             case ErrorCode::DuplicateOrderId:
-                out <<"Duplicate OrderID Error"; break;
+                out <<"DuplicatOrderID Error"; break;
             case ErrorCode::DuplicateProductId:
-                out <<"Duplicate ProductID Error"; break;
+                out <<"DuplicateProductID Error"; break;
             case ErrorCode::InvalidPrice:
-                out <<"Invalid Price Error"; break;
+                out <<"InvalidPrice Error"; break;
             case ErrorCode::InvalidQuantity:
-                out <<"Invalid Quantity Error"; break;
+                out <<"InvalidQuantity Error"; break;
             case ErrorCode::CorruptMessage:
                 out <<"Corrupt Message Received Error"; break;
+            case ErrorCode::TradeWithNoValidBuySide:
+                out <<"TradeWithNoValidBuySide Error"; break;
+            case ErrorCode::TradeWithNoValidSellSide:
+                out <<"TradeWithNoValidSellSide Error"; break;
             case ErrorCode::Unknown:
             default:
                 out <<"Unknown Error"; break;

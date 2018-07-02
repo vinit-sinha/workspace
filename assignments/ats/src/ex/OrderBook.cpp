@@ -116,7 +116,5 @@ ex::type::ErrorCode ex::OrderBook::notify(const ex::msg::CancelOrder& obj)
 
 ex::type::ErrorCode ex::OrderBook::notify(const ex::msg::Trade& obj)
 {
-    execute( buys[obj.productId], sells[obj.productId], obj);
-
-    return ex::type::ErrorCode::Ok;
+    return execute( buys[obj.productId], sells[obj.productId], obj);
 }
