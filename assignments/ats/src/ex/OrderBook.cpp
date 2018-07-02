@@ -101,11 +101,5 @@ void ex::OrderBook::notify(const ex::msg::CancelOrder& obj)
 
 void ex::OrderBook::notify(const ex::msg::Trade& obj)
 {
-    auto productIdIter = orderIdToProductIdMap.find( obj.orderId );
-    if( productIdIter == orderIdToProductIdMap.end() ) {
-        //TODO Error Reporting
-        return;
-    }
-
-    execute( buys[productIdIter->second], sells[productIdIter->second], obj);
+    execute( buys[obj.productId], sells[obj.productId], obj);
 }

@@ -59,7 +59,6 @@ namespace ex{ namespace msg{
         {
             Msg m;
             in >> m;
-            std::cout <<"Decoded: " << m << std::endl;
             onDecode(const_cast<const Msg&>(m));
         }
     };
