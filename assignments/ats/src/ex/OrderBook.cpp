@@ -1,4 +1,5 @@
 #include "ex/OrderBook.h"
+#include "ex/state/OrderInfo.h"
 #include <algorithm>
 
 template<typename Book>
@@ -54,7 +55,7 @@ void ex::OrderBook::print(std::ostream& out, std::size_t level, bool printHeader
 }
 void ex::OrderBook::notify(const ex::msg::NewOrder& obj)
 {
-    OrderInfo ord;
+    ex::state::OrderInfo ord;
     ord.orderId = obj.orderId;
     ord.price = obj.price;
     ord.quantity = obj.quantity;

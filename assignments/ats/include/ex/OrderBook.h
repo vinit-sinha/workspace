@@ -9,13 +9,9 @@
 #include "ex/msg/AmendOrder.h"
 #include "ex/msg/CancelOrder.h"
 #include "ex/msg/Trade.h"
+#include "ex/state/OrderInfo.h"
 
 namespace ex {
-    struct OrderInfo {
-        ex::type::OrderId orderId;
-        ex::type::Quantity quantity;
-        ex::type::Price price;
-    };
 
     struct OrderBook {
         void notify(const ex::msg::NewOrder& obj);
@@ -29,18 +25,18 @@ namespace ex {
         }
     private:
         struct DescendingPriceOrdering {
-            bool operator()(const OrderInfo& lhs, const OrderInfo& rhs) {
+            bool operator()(const ex::state::OrderInfo& lhs, const ex::state::OrderInfo& rhs) {
                 return lhs.price > rhs.price;
             }
         };
 
         struct AscendingPriceOrdering {
-            bool operator()(const OrderInfo& lhs, const OrderInfo& rhs) {
+            bool operator()(const ex::state::OrderInfo& lhs, const ex::state::OrderInfo& rhs) {
                 return lhs.price < rhs.price;
             }
         };
-        using Buys = std::unordered_map<ex::type::ProductId, std::set<OrderInfo, DescendingPriceOrdering>>;
-        using Sells = std::unordered_map<ex::type::ProductId, std::set<OrderInfo, AscendingPriceOrdering>>;
+        using Buys = std::unordered_map<ex::type::ProductId, std::set<ex::state::OrderInfo, DescendingPriceOrdering>>;
+        using Sells = std::unordered_map<ex::type::ProductId, std::set<ex::state::OrderInfo, AscendingPriceOrdering>>;
         using OrderIdToProductIdMap = std::unordered_map< ex::type::OrderId, ex::type::ProductId>;
 
         Buys buys;
@@ -52,13 +48,13 @@ namespace ex {
         template<typename OrderSet>
         void amend(OrderSet& infoSet, const ex::msg::AmendOrder& obj) {
            auto orderId = obj.orderId;
-           auto iter = std::find_if( infoSet.begin(), infoSet.end(), [&orderId](const OrderInfo& info) {
+           auto iter = std::find_if( infoSet.begin(), infoSet.end(), [&orderId](const ex::state::OrderInfo& info) {
                return info.orderId == orderId;
            });
 
            if( iter != infoSet.end() ) {
                infoSet.erase( iter );
-               OrderInfo newInfo;
+               ex::state::OrderInfo newInfo;
                newInfo.orderId = obj.orderId;
                newInfo.price = obj.price;
                newInfo.quantity = obj.quantity;
@@ -72,7 +68,7 @@ namespace ex {
         template<typename OrderSet>
         void cancel(OrderSet& infoSet, const ex::msg::CancelOrder& obj) {
            auto orderId = obj.orderId;
-           auto iter = std::find_if( infoSet.begin(), infoSet.end(), [&orderId](const OrderInfo& info) {
+           auto iter = std::find_if( infoSet.begin(), infoSet.end(), [&orderId](const ex::state::OrderInfo& info) {
                return info.orderId == orderId;
            });
 
@@ -86,7 +82,7 @@ namespace ex {
        template<typename Iter> 
        Iter bestPriceMatch(Iter b, Iter e, ex::type::Price price) {
                 // TODO: Implement our own verson of find_if for a reasonable "closet" match (which requires defining "closest" )
-               return std::find_if( b, e, [&price](const ex::OrderInfo& info) { return info.price == price; }); 
+               return std::find_if( b, e, [&price](const ex::state::OrderInfo& info) { return info.price == price; }); 
        }
  
        template<typename OrderSet> 
@@ -95,7 +91,7 @@ namespace ex {
            auto iter = bestPriceMatch( orderSet.begin(), orderSet.end(), obj.price );
            while( matchedQty > 0 && iter != orderSet.end() ) {
                if( iter->quantity >= matchedQty ) {
-                   OrderInfo newInfo = *iter;
+                   ex::state::OrderInfo newInfo = *iter;
                    newInfo.quantity -= matchedQty;
                    orderSet.erase( iter );
                    auto emplace_result = orderSet.emplace( newInfo ); 
