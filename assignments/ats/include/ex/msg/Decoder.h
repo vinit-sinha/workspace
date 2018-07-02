@@ -7,7 +7,7 @@
 
 namespace ex{ namespace msg{
     template<typename OnDecode> struct Decoder {
-        Decoder(std::istream& i, OnDecode onDecodeHandler)
+        Decoder(std::istream& i, OnDecode& onDecodeHandler)
             : in(i)
               , onDecode(onDecodeHandler)
         {}
@@ -46,7 +46,7 @@ namespace ex{ namespace msg{
         }
     private:
         std::istream& in;
-        OnDecode onDecode;
+        OnDecode& onDecode;
 
         ex::type::Action decodeAction() 
         {

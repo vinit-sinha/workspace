@@ -48,4 +48,31 @@ namespace ex{ namespace type{
         }
         return in;
     }
+
+    std::ostream & operator<<(std::ostream & out,const ErrorCode& e)
+    {
+        switch(e) {
+            case ErrorCode::Ok:
+                out <<"No Error"; break;
+            case ErrorCode::InvalidOrderId:
+                out <<"Invalid OrderID Error"; break;
+            case ErrorCode::InvalidProductId:
+                out <<"Invalid ProductID Error"; break;
+            case ErrorCode::DuplicateOrderId:
+                out <<"Duplicate OrderID Error"; break;
+            case ErrorCode::DuplicateProductId:
+                out <<"Duplicate ProductID Error"; break;
+            case ErrorCode::InvalidPrice:
+                out <<"Invalid Price Error"; break;
+            case ErrorCode::InvalidQuantity:
+                out <<"Invalid Quantity Error"; break;
+            case ErrorCode::CorruptMessage:
+                out <<"Corrupt Message Received Error"; break;
+            case ErrorCode::Unknown:
+            default:
+                out <<"Unknown Error"; break;
+        }
+
+        return out;
+    }
 }}

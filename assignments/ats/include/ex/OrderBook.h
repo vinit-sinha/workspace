@@ -12,31 +12,19 @@
 #include "ex/state/OrderInfo.h"
 
 namespace ex {
-
     struct OrderBook {
-        void notify(const ex::msg::NewOrder& obj);
-        void notify(const ex::msg::AmendOrder& obj);
-        void notify(const ex::msg::CancelOrder& obj);
-        void notify(const ex::msg::Trade& obj);
+        ex::type::ErrorCode notify(const ex::msg::NewOrder& obj);
+        ex::type::ErrorCode notify(const ex::msg::AmendOrder& obj);
+        ex::type::ErrorCode notify(const ex::msg::CancelOrder& obj);
+        ex::type::ErrorCode notify(const ex::msg::Trade& obj);
         
         void print(std::ostream& out, std::size_t level, bool printHeader);
         std::pair<ex::type::Price, ex::type::Quantity> getLastTradedPriceAndQuantiity(ex::type::ProductId productId) {
             return lastTradedPriceAndQuantity[productId];
         }
     private:
-        struct DescendingPriceOrdering {
-            bool operator()(const ex::state::OrderInfo& lhs, const ex::state::OrderInfo& rhs) {
-                return lhs.price > rhs.price;
-            }
-        };
-
-        struct AscendingPriceOrdering {
-            bool operator()(const ex::state::OrderInfo& lhs, const ex::state::OrderInfo& rhs) {
-                return lhs.price < rhs.price;
-            }
-        };
-        using Buys = std::unordered_map<ex::type::ProductId, std::set<ex::state::OrderInfo, DescendingPriceOrdering>>;
-        using Sells = std::unordered_map<ex::type::ProductId, std::set<ex::state::OrderInfo, AscendingPriceOrdering>>;
+        using Buys = std::unordered_map<ex::type::ProductId, std::set<ex::state::OrderInfo, ex::state::DescendingPriceOrdering>>;
+        using Sells = std::unordered_map<ex::type::ProductId, std::set<ex::state::OrderInfo, ex::state::AscendingPriceOrdering>>;
         using OrderIdToProductIdMap = std::unordered_map< ex::type::OrderId, ex::type::ProductId>;
 
         Buys buys;
@@ -45,38 +33,45 @@ namespace ex {
         std::unordered_set<ex::type::ProductId> products;
         std::unordered_map<ex::type::ProductId, std::pair<ex::type::Price, ex::type::Quantity>> lastTradedPriceAndQuantity;
 
+        bool orderExists(ex::type::OrderId orderId) const {
+            return orderIdToProductIdMap.find( orderId ) != orderIdToProductIdMap.end();
+        }
         template<typename OrderSet>
-        void amend(OrderSet& infoSet, const ex::msg::AmendOrder& obj) {
+        ex::type::ErrorCode amend(OrderSet& infoSet, const ex::msg::AmendOrder& obj) {
            auto orderId = obj.orderId;
-           auto iter = std::find_if( infoSet.begin(), infoSet.end(), [&orderId](const ex::state::OrderInfo& info) {
+           auto iter = std::find_if( infoSet.begin(), infoSet.end(), [orderId](const ex::state::OrderInfo& info) {
                return info.orderId == orderId;
            });
 
-           if( iter != infoSet.end() ) {
-               infoSet.erase( iter );
-               ex::state::OrderInfo newInfo;
-               newInfo.orderId = obj.orderId;
-               newInfo.price = obj.price;
-               newInfo.quantity = obj.quantity;
+           if( iter == infoSet.end() ) return ex::type::ErrorCode::InvalidOrderId;
+
+           infoSet.erase( iter );
+           ex::state::OrderInfo newInfo;
+           newInfo.orderId = obj.orderId;
+           newInfo.price = obj.price;
+           newInfo.quantity = obj.quantity;
  
-               infoSet.emplace( newInfo );
-           } else {
-                //TODO: Indicate Error
-           }
+           infoSet.emplace( newInfo );
+
+           return ex::type::ErrorCode::Ok;
         }
 
         template<typename OrderSet>
-        void cancel(OrderSet& infoSet, const ex::msg::CancelOrder& obj) {
+        ex::type::ErrorCode cancel(OrderSet& infoSet, const ex::msg::CancelOrder& obj) {
+           ex::type::ErrorCode err = ex::type::ErrorCode::Ok;
+
            auto orderId = obj.orderId;
-           auto iter = std::find_if( infoSet.begin(), infoSet.end(), [&orderId](const ex::state::OrderInfo& info) {
+           auto iter = std::find_if( infoSet.begin(), infoSet.end(), [orderId](const ex::state::OrderInfo& info) {
                return info.orderId == orderId;
            });
 
            if( iter != infoSet.end() ) {
                infoSet.erase( iter );
            } else {
-                //TODO: Indicate Error
+              err = ex::type::ErrorCode::InvalidOrderId; 
            }
+
+            return err;
         }
 
        template<typename Iter> 
@@ -87,21 +82,27 @@ namespace ex {
  
        template<typename OrderSet> 
        void execute(OrderSet& orderSet, const ex::msg::Trade& obj) {
-           ex::type::Quantity matchedQty = obj.quantity;
+           ex::type::Quantity remainingQty = obj.quantity;
            auto iter = bestPriceMatch( orderSet.begin(), orderSet.end(), obj.price );
-           while( matchedQty > 0 && iter != orderSet.end() ) {
-               if( iter->quantity >= matchedQty ) {
+           while( remainingQty > 0 && iter != orderSet.end() ) {
+               if( iter->quantity >= remainingQty ) {
                    ex::state::OrderInfo newInfo = *iter;
-                   newInfo.quantity -= matchedQty;
+                   newInfo.quantity -= remainingQty;
                    orderSet.erase( iter );
                    auto emplace_result = orderSet.emplace( newInfo ); 
                    iter = emplace_result.first;
-                   matchedQty = 0;
-               } else { // All quatity for this order can be executed. so can be removed from book
-                   iter = orderSet.erase( iter ); //Closed Order
-                   matchedQty -= iter->quantity;
+                   remainingQty = 0;
+               } else { // All quatity for this order can be executed. so quantity for this order needs to be set to 0
+                   remainingQty -= iter->quantity;
+
+                   ex::state::OrderInfo newInfo = *iter;
+                   newInfo.quantity = 0;
+
+                   orderSet.erase( iter );
+                   auto emplace_result = orderSet.emplace( newInfo ); 
+                   iter = emplace_result.first;
                }
-               iter = bestPriceMatch( iter, orderSet.end(), obj.price ); //Try the next bestMatch
+               iter = bestPriceMatch( ++iter, orderSet.end(), obj.price ); //Try the next bestMatch
            }
         }
 

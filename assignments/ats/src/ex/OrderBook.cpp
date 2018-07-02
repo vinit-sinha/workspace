@@ -53,54 +53,67 @@ void ex::OrderBook::print(std::ostream& out, std::size_t level, bool printHeader
         out << std::endl;
     }
 }
-void ex::OrderBook::notify(const ex::msg::NewOrder& obj)
+ex::type::ErrorCode ex::OrderBook::notify(const ex::msg::NewOrder& obj)
 {
+    if ( orderExists( obj.orderId ) ) return ex::type::ErrorCode::DuplicateOrderId;
+
     ex::state::OrderInfo ord;
     ord.orderId = obj.orderId;
     ord.price = obj.price;
     ord.quantity = obj.quantity;
 
+
     products.emplace( obj.productId );
+    orderIdToProductIdMap[obj.orderId] = obj.productId;
+
     if( obj.side == ex::type::Side::Buy ) {
         buys[obj.productId].emplace( ord );
     } else {
         sells[obj.productId].emplace( ord );
     }
 
-    orderIdToProductIdMap[obj.orderId] = obj.productId;
+    return ex::type::ErrorCode::Ok;
 }
-void ex::OrderBook::notify(const ex::msg::AmendOrder& obj)
+
+ex::type::ErrorCode ex::OrderBook::notify(const ex::msg::AmendOrder& obj)
 {
     auto productIdIter = orderIdToProductIdMap.find( obj.orderId );
     if( productIdIter == orderIdToProductIdMap.end() ) {
-        //TODO Error Reporting
-        return;
+        return ex::type::ErrorCode::InvalidProductId;
     }
 
-    //TODO: Also make sure that only Price and Quantiy is asked to change
+    ex::type::ErrorCode err = ex::type::ErrorCode::Ok;
+
     if( obj.side == ex::type::Side::Buy ) {
-        amend( buys[productIdIter->second], obj );
+        err = amend( buys[productIdIter->second], obj );
     } else {
-        amend( sells[productIdIter->second], obj );
+        err = amend( sells[productIdIter->second], obj );
     }
+
+    return err;
 }
 
-void ex::OrderBook::notify(const ex::msg::CancelOrder& obj)
+ex::type::ErrorCode ex::OrderBook::notify(const ex::msg::CancelOrder& obj)
 {
     auto productIdIter = orderIdToProductIdMap.find( obj.orderId );
     if( productIdIter == orderIdToProductIdMap.end() ) {
-        //TODO Error Reporting
-        return;
+        return ex::type::ErrorCode::InvalidProductId;
     }
+
+    ex::type::ErrorCode err = ex::type::ErrorCode::Ok;
 
     if( obj.side == ex::type::Side::Buy ) {
-        cancel( buys[productIdIter->second], obj );
+        err = cancel( buys[productIdIter->second], obj );
     } else {
-        cancel( sells[productIdIter->second], obj );
+        err = cancel( sells[productIdIter->second], obj );
     }
+
+    return err;
 }
 
-void ex::OrderBook::notify(const ex::msg::Trade& obj)
+ex::type::ErrorCode ex::OrderBook::notify(const ex::msg::Trade& obj)
 {
     execute( buys[obj.productId], sells[obj.productId], obj);
+
+    return ex::type::ErrorCode::Ok;
 }
