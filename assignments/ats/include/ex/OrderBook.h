@@ -23,8 +23,8 @@ namespace ex {
             return lastTradedPriceAndQuantity[productId];
         }
     private:
-        using Buys = std::unordered_map<ex::type::ProductId, std::set<ex::state::OrderInfo, ex::state::DescendingPriceOrdering>>;
-        using Sells = std::unordered_map<ex::type::ProductId, std::set<ex::state::OrderInfo, ex::state::AscendingPriceOrdering>>;
+        using Buys = std::unordered_map<ex::type::ProductId, std::multiset<ex::state::OrderInfo, ex::state::DescendingPriceOrdering>>;
+        using Sells = std::unordered_map<ex::type::ProductId, std::multiset<ex::state::OrderInfo, ex::state::AscendingPriceOrdering>>;
         using OrderIdToProductIdMap = std::unordered_map< ex::type::OrderId, ex::type::ProductId>;
 
         Buys buys;
@@ -89,8 +89,7 @@ namespace ex {
                    ex::state::OrderInfo newInfo = *iter;
                    newInfo.quantity -= remainingQty;
                    orderSet.erase( iter );
-                   auto emplace_result = orderSet.emplace( newInfo ); 
-                   iter = emplace_result.first;
+                   iter = orderSet.emplace( newInfo ); 
                    remainingQty = 0;
                } else { // All quatity for this order can be executed. so quantity for this order needs to be set to 0
                    remainingQty -= iter->quantity;
@@ -99,8 +98,7 @@ namespace ex {
                    newInfo.quantity = 0;
 
                    orderSet.erase( iter );
-                   auto emplace_result = orderSet.emplace( newInfo ); 
-                   iter = emplace_result.first;
+                   iter = orderSet.emplace( newInfo ); 
                }
                iter = bestPriceMatch( ++iter, orderSet.end(), obj.price ); //Try the next bestMatch
            }
