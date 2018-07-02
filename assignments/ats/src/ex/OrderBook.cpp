@@ -27,9 +27,12 @@ template<typename OrderInfoSet>
 void printPricePoints(std::ostream& out, OrderInfoSet& infoSet, std::size_t uptoLevel) 
 {
     std::size_t i = std::min( uptoLevel, infoSet.size() );
-    for( auto infoSetIter = infoSet.begin(); infoSetIter != infoSet.end() && i > 0; infoSetIter++ ) {
+    auto infoSetIter = infoSet.begin();
+    while( infoSetIter != infoSet.end() && i > 0 ) {
         out << std::setw(10) << std::left << infoSetIter->price;
         i--;
+        //Skip to next price level
+        infoSetIter = infoSet.upper_bound( *infoSetIter );
     }
 
     if( infoSet.size() < uptoLevel ) {
